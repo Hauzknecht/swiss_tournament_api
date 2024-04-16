@@ -1,0 +1,1 @@
+from logic.tournament import pairings

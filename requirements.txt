@@ -1,0 +1,11 @@
+flask
+flask-smorest
+python-dotenv
+greenlet==1.1.0
+sqlalchemy
+flask-sqlalchemy
+flask-jwt-extended
+passlib
+flask-migrate
+gunicorn
+psycopg2-binary
