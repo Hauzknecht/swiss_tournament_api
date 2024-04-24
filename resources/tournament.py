@@ -68,7 +68,7 @@ class TournamentList(MethodView):
     @blp.response(200, TournamentSchema(many=True))
     def get(self):
         current_user = get_jwt_identity()
-        return TournamentModel.query.filter(TournamentModel.user_id==current_user)
+        return TournamentModel.query.filter(TournamentModel.user_id==current_user), 200
     
 @blp.route("/tournament/<int:tournament_id>")
 class Tournament(MethodView):
@@ -80,7 +80,7 @@ class Tournament(MethodView):
     def get(self,tournament_id):
         current_user = get_jwt_identity()
         tournament = TournamentModel.query.get_or_404(tournament_id)
-        if tournament.id != current_user:
+        if tournament.user_id != current_user:
             abort(401, "Only owner can request tournament information.")
         return tournament
     
@@ -89,7 +89,7 @@ class Tournament(MethodView):
     def delete(self, tournament_id):
         current_user = get_jwt_identity()
         tournament = TournamentModel.query.get_or_404(tournament_id)
-        if tournament.id != current_user:
+        if tournament.user_id != current_user:
             abort(401, "Only owner can delete tournament.")
         db.session.delete(tournament)
         db.session.commit()
@@ -101,10 +101,14 @@ class Round(MethodView):
     """Report round consisting of matches"""
     @jwt_required()
     @blp.arguments(MatchSchema(many=True))
+    @blp.response(200, description="Round reported.")
+    @blp.alt_response(401, description="Not an owner of tournament.")
+    @blp.alt_response(404, description="One or both players not found in tournament.")
+    @blp.alt_response(500, description="An error occured while reporting match.")
     def post(self, matches_data, tournament_id):
         current_user = get_jwt_identity()
         tournament = TournamentModel.query.get_or_404(tournament_id)
-        if tournament.id != current_user:
+        if tournament.user_id != current_user:
             abort(401, "Only owner can submit round results.")
         
         for match in matches_data:
@@ -114,82 +118,94 @@ class Round(MethodView):
             player2_points = match["player2_points"]
             if not PlayerModel.query.filter_by(id=player1_id, tournament_id=tournament_id) or not PlayerModel.query.filter_by(id=player2_id, tournament_id=tournament_id):
                 abort(404, "One or both players not found in tournament.")
-            new_match = MatchModel(
-                player1_id=player1_id,
-                player2_id=player2_id,
-                player1_points=player1_points,
-                player2_points=player2_points,
-                tournament_id=tournament_id,
-                round_number = tournament.current_round,
-                tournament = tournament
-            )
-            try:
-                db.session.add(new_match)
-                db.session.commit()
-            except:
-                abort(500, "An error occured while reporting match.")
-            
-            games_count = player1_points+player2_points
             player1 = PlayerModel.query.get(player1_id)
             player2 = PlayerModel.query.get(player2_id)
-            player1.games_played += games_count
-            player2.games_played += games_count
-            player1.games_winned += player1_points
-            player2.games_winned += player2_points
-            player1.matches_played += 1
-            player2.matches_played += 1
-            if player1_points == player2_points:
-                player1.matches_winned += 0.5
-                player2.matches_winned += 0.5
-                player1.score += 1
-                player2.score += 1
-            elif player1_points>player2_points:
-                player1.matches_winned += 1
-                player1.score +=3
-            else:
-                player2.matches_winned += 1
-                player2.score += 3
-            
-            db.session.add(player1)
-            db.session.add(player2)
-            db.session.commit()
-        
-        tournament.current_round += 1
-        if tournament.current_round == tournament.number_of_rounds+1:
-            tournament.is_finished=True
-        db.session.add(tournament)
-        db.session.commit()
-        
-        return {"message": "Round reported."}
-    
-    """Get pairings for next round"""
-    @jwt_required()
-    def get(self, tournament_id):
-        current_user = get_jwt_identity()
-        tournament = TournamentModel.query.get_or_404(tournament_id)
-        if tournament.id != current_user:
-            abort(401, "Only owner can submit round results.")
-        
-        pairs, standings = pairings(tournament)
-        if len(pairs)!=0:
-            if pairs[0]["player2_name"] == "BYE":
+            if player2.name != "BYE":
                 new_match = MatchModel(
-                    player1_id=pairs[0]["player1_id"],
-                    player2_id=pairs[0]["player2_id"],
+                    player1_id=player1_id,
+                    player2_id=player2_id,
+                    player1_name=player1.name,
+                    player2_name=player2.name,
                     player1_points=1,
                     player2_points=0,
                     tournament_id=tournament_id,
-                    round_number = tournament.current_round+1
+                    round_number = tournament.current_round,
+                    tournament = tournament
                 )
-                player_with_bye = PlayerModel.query.filter_by(id=pairs[0]["player1_id"], tournament_id=tournament_id).first()
-                player_with_bye.games_played += 1
-                player_with_bye.games_winned += 1
-                player_with_bye.matches_played += 1
-                player_with_bye.matches_winned += 1
-                player_with_bye.score += 3
-                db.session.add(player_with_bye)
-                db.session.add(new_match)
+                try:
+                    db.session.add(new_match)
+                    db.session.commit()
+                except:
+                    abort(500, "An error occured while reporting match.")
+                
+                games_count = player1_points+player2_points
+                player1.games_played += games_count
+                player2.games_played += games_count
+                player1.games_winned += player1_points
+                player2.games_winned += player2_points
+                player1.matches_played += 1
+                player2.matches_played += 1
+                if player1_points == player2_points:
+                    player1.matches_winned += 0.5
+                    player2.matches_winned += 0.5
+                    player1.score += 1
+                    player2.score += 1
+                elif player1_points>player2_points:
+                    player1.matches_winned += 1
+                    player1.score +=3
+                else:
+                    player2.matches_winned += 1
+                    player2.score += 3
+                
+                db.session.add(player1)
+                db.session.add(player2)
                 db.session.commit()
+            else:
+                new_match = MatchModel(
+                    player1_id=player1_id,
+                    player2_id=player2_id,
+                    player1_name=player1.name,
+                    player2_name=player2.name,
+                    player1_points=1,
+                    player2_points=0,
+                    tournament_id=tournament_id,
+                    round_number = tournament.current_round,
+                    tournament = tournament
+                )
+                player1.games_played += 1
+                player1.games_winned += 1
+                player1.matches_played += 1
+                player1.matches_winned += 1
+                player1.score += 3
+                try:
+                    db.session.add(player1)
+                    db.session.add(new_match)
+                    db.session.commit()
+                except:
+                    abort(500, "An error occured while reporting match.")
+        
+        if tournament.current_round == tournament.number_of_rounds:
+            tournament.is_finished=True
+        else:
+            tournament.current_round += 1
+        try:
+            db.session.add(tournament)
+            db.session.commit()
+        except:
+            abort(500, "An error occured while reporting match.")
+        
+        return {"message": "Round reported."}, 200
+    
+    """Get pairings for next round"""
+    @jwt_required()
+    @blp.response(200, description="Pairs for next rounds and standings are generated.")
+    def get(self, tournament_id):
+        current_user = get_jwt_identity()
+        tournament = TournamentModel.query.get_or_404(tournament_id)
+        if tournament.user_id != current_user:
+            abort(401, "Only owner can submit round results.")
+        
+        pairs, standings = pairings(tournament)
 
-        return {"pairings": pairs, "standings": standings}
+        return {"pairings": pairs, "standings": standings}, 200
         

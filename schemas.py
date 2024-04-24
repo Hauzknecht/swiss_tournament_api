@@ -28,6 +28,8 @@ class PlainMatchSchema(Schema):
     round_number = fields.Int(dump_only=True)
     player1_id = fields.Int(required=True, load_only=True)
     player2_id = fields.Int(required=True, load_only=True)
+    player1_name = fields.Str(dump_only=True)
+    player2_name = fields.Str(dump_only=True)
     player1_points = fields.Int(required=True)
     player2_points = fields.Int(required=True)
 

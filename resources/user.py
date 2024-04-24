@@ -41,7 +41,7 @@ class UserLogin(MethodView):
         if user and pbkdf2_sha256.verify(user_data["password"], user.password):
             access_token = create_access_token(identity=user.id, fresh=True)
             refresh_token = create_refresh_token(identity=user.id)
-            return {"access_token" : access_token, "refresh_token": refresh_token}
+            return {"accessToken" : access_token, "refreshToken": refresh_token}
         
         abort(401, message="Invlaid credentials.")
 
@@ -51,9 +51,9 @@ class TokenRefresh(MethodView):
     def post(self):
         current_user = get_jwt_identity()
         new_token = create_access_token(identity=current_user, fresh=False)
-        jti = get_jwt()["jti"]
-        BLOCKLIST.add(jti)
-        return {"access_token": new_token}
+        #jti = get_jwt()["jti"]
+        """BLOCKLIST.add(jti)"""
+        return {"accessToken": new_token}, 200
 
 
 @blp.route("/logout")
@@ -63,7 +63,17 @@ class UserLogout(MethodView):
         jti = get_jwt()["jti"]
         BLOCKLIST.add(jti)
         return {"message": "Succesfully logged out."}
-    
+
+@blp.route("/user")
+class UserInfo(MethodView):
+    @jwt_required()
+    @blp.response(200, UserSchema)
+    def get(self):
+        current_user = get_jwt_identity()
+        user = UserModel.query.get(current_user)
+        return user
+
+
 @blp.route("/user/<int:user_id>")
 class User(MethodView):
     @blp.response(200, UserSchema)
