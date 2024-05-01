@@ -1,5 +1,5 @@
 import random
-from models import MatchModel
+from models import MatchModel, PlayerModel
 
 """functions returns list of (player_id, player_name, player score, player omw and player ogw)"""
 def calculate_score_omw_ogw(player, matches):
@@ -75,7 +75,8 @@ def pairings(tournament):
                     unmatched.pop(i)
                     break    
         if len(unmatched)==1:
-              bye_player = players[len(players)-1]
+              #bye_player = players[len(players)-1]
+              bye_player = PlayerModel.query.filter((PlayerModel.name == "BYE") & (PlayerModel.tournament_id == tournament.id)).first()
               bye_opponent = unmatched.pop(0)
               pairs.insert(0,{
                         "player1_id": bye_opponent[0],
