@@ -127,8 +127,8 @@ class Round(MethodView):
                     player2_id=player2_id,
                     player1_name=player1.name,
                     player2_name=player2.name,
-                    player1_points=1,
-                    player2_points=0,
+                    player1_points=player1_points,
+                    player2_points=player2_points,
                     tournament_id=tournament_id,
                     round_number = tournament.current_round,
                     tournament = tournament
