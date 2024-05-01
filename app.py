@@ -33,7 +33,7 @@ def create_app(db_url=None):
 
     api = Api(app)
 
-    app.config["JWT_SECRET_KEY"] = "80356663116568293133861074020168941030"
+    app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "80356663116568293133861074020168941030")
     app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
     app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=1)
     jwt = JWTManager(app)
