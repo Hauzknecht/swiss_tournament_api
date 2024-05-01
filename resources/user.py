@@ -26,7 +26,7 @@ class UserRegister(MethodView):
             db.session.add(user)
             db.session.commit()
         except IntegrityError:
-            abort(409, message="A user with that name already exists.")
+            abort(409, message="An user with that name already exists.")
         
         return {"message": "User created succesfully."}, 201
     
@@ -43,7 +43,7 @@ class UserLogin(MethodView):
             refresh_token = create_refresh_token(identity=user.id)
             return {"accessToken" : access_token, "refreshToken": refresh_token}
         
-        abort(401, message="Invlaid credentials.")
+        abort(401, message="Invalid credentials.")
 
 @blp.route("/refresh")
 class TokenRefresh(MethodView):

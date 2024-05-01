@@ -85,7 +85,7 @@ class Tournament(MethodView):
         return tournament
     
     """Delete tournament"""
-    @jwt_required(refresh=True)
+    @jwt_required()
     def delete(self, tournament_id):
         current_user = get_jwt_identity()
         tournament = TournamentModel.query.get_or_404(tournament_id)
@@ -120,6 +120,7 @@ class Round(MethodView):
                 abort(404, "One or both players not found in tournament.")
             player1 = PlayerModel.query.get(player1_id)
             player2 = PlayerModel.query.get(player2_id)
+            # two player match
             if player2.name != "BYE":
                 new_match = MatchModel(
                     player1_id=player1_id,
@@ -161,6 +162,7 @@ class Round(MethodView):
                 db.session.add(player2)
                 db.session.commit()
             else:
+                # player has bye
                 new_match = MatchModel(
                     player1_id=player1_id,
                     player2_id=player2_id,
@@ -208,4 +210,21 @@ class Round(MethodView):
         pairs, standings = pairings(tournament)
 
         return {"pairings": pairs, "standings": standings}, 200
-        
+    
+@blp.route("/tournaments/ongoing")
+class OngoingTournaments(MethodView):
+    """get all torunaments of player"""
+    @jwt_required()
+    @blp.response(200, TournamentSchema(many=True))
+    def get(self):
+        current_user = get_jwt_identity()
+        return TournamentModel.query.filter((TournamentModel.user_id==current_user) & (TournamentModel.is_finished==False)), 200 
+
+@blp.route("/tournaments/finished")
+class OngoingTournaments(MethodView):
+    """get all torunaments of player"""
+    @jwt_required()
+    @blp.response(200, TournamentSchema(many=True))
+    def get(self):
+        current_user = get_jwt_identity()
+        return TournamentModel.query.filter((TournamentModel.user_id==current_user) & (TournamentModel.is_finished==True)), 200
