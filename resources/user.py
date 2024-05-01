@@ -86,3 +86,14 @@ class User(MethodView):
         db.session.delete(user)
         db.session.commit()
         return {"message": "User deleted."}, 200
+    
+@blp.route("/userexists/<username>")
+class Userexists(MethodView):
+    @blp.response(200, description="An user already exists.")
+    @blp.alt_response(404, description="An user don t exists.")
+    def get(self, username):
+        user = UserModel.query.filter(UserModel.username == username).first()
+        if user:
+            return {"message": "user found"}, 200
+        else:
+            return {"message": "not found"}, 404
